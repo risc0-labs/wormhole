@@ -25,8 +25,6 @@ contract Storage {
         // Mapping of guardian_set_index => guardian set
         mapping(uint32 => Structs.GuardianSet) guardianSets;
 
-        mapping(uint32 => bytes32) guardianSetCommitments;
-
         // Current active guardian set index
         uint32 guardianSetIndex;
 
@@ -46,6 +44,9 @@ contract Storage {
 
         // EIP-155 Chain ID
         uint256 evmChainId;
+
+        // Mapping of guardian_set_index => keccak(guardian set)
+        mapping(uint32 => bytes32) guardianSetCommitments;
     }
 }
 

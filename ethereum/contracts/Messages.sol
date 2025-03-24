@@ -16,7 +16,7 @@ contract Messages is Getters {
     function parseAndVerifyVM(bytes calldata encodedVM) public view returns (Structs.VM memory vm, bool valid, string memory reason) {
         vm = parseVM(encodedVM);
         /// setting checkHash to false as we can trust the hash field in this case given that parseVM computes and then sets the hash field above
-        (valid, reason) = verifyVMInternal(vm, false);
+        (valid, reason) = verifyVMInternal_v1(vm, false);
     }
 
    /**
@@ -28,7 +28,7 @@ contract Messages is Getters {
     *  - it aims to verify the hash field provided against the contents of the vm
     */
     function verifyVM(Structs.VM memory vm) public view returns (bool valid, string memory reason) {
-        (valid, reason) = verifyVMInternal(vm, true);    
+        (valid, reason) = verifyVMInternal_v1(vm, true);    
     }
 
     /**
@@ -37,7 +37,7 @@ contract Messages is Getters {
     * in the case that the vm is securely parsed and the hash field can be trusted, checkHash can be set to false
     * as the check would be redundant
     */
-    function verifyVMInternal(Structs.VM memory vm, bool checkHash) internal view returns (bool valid, string memory reason) {
+    function verifyVMInternal_v1(Structs.VM memory vm, bool checkHash) internal view returns (bool valid, string memory reason) {
         /// @dev Obtain the current guardianSet for the guardianSetIndex provided
         Structs.GuardianSet memory guardianSet = getGuardianSet(vm.guardianSetIndex);
 
