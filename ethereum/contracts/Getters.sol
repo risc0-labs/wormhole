@@ -10,6 +10,10 @@ contract Getters is State {
         return _state.guardianSets[index];
     }
 
+    function getGuardianSetCommitment(uint32 index) public view returns (bytes32) {
+        return _state.guardianSetCommitments[index];
+    }
+
     function getCurrentGuardianSetIndex() public view returns (uint32) {
         return _state.guardianSetIndex;
     }

@@ -19,6 +19,8 @@ contract Setters is State {
         for (uint i = 0; i < setLength; i++) {
             require(set.keys[i] != address(0), "Invalid key");
         }
+        bytes32 commitment = keccak256(abi.encode(set.keys));
+        _state.guardianSetCommitments[index] = commitment;
         _state.guardianSets[index] = set;
     }
 
