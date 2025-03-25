@@ -1,7 +1,7 @@
+use alloy::primitives::Address;
+use alloy::sol_types::SolValue;
 use serde::{Deserialize, Serialize};
-
-/// Type representing an Ethereum style public key for Guardians.
-pub type GuardianPublicKey = [u8; 20];
+use sha2::{Digest, Sha256};
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct GuardianSet {
@@ -9,7 +9,7 @@ pub struct GuardianSet {
     pub index: u32,
 
     /// ETH style public keys
-    pub keys: Vec<GuardianPublicKey>,
+    pub keys: Vec<Address>,
 
     /// Timestamp representing the time this guardian became active.
     pub creation_time: u32,
@@ -20,6 +20,9 @@ pub struct GuardianSet {
 
 impl GuardianSet {
     pub fn commitment(&self) -> Vec<u8> {
-        todo!()
+        let data = self.keys.abi_encode_packed();
+        let mut hasher = Sha256::new();
+        hasher.update(&data);
+        hasher.finalize().to_vec()
     }
 }
