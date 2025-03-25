@@ -1,7 +1,7 @@
 use alloy::primitives::Address;
 use alloy::sol_types::SolValue;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
+use sha3::{Digest, Keccak256};
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct GuardianSet {
@@ -21,7 +21,7 @@ pub struct GuardianSet {
 impl GuardianSet {
     pub fn commitment(&self) -> Vec<u8> {
         let data = self.keys.abi_encode_packed();
-        let mut hasher = Sha256::new();
+        let mut hasher = Keccak256::new();
         hasher.update(&data);
         hasher.finalize().to_vec()
     }

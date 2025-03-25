@@ -8,6 +8,8 @@ pub enum Error {
     Signature(#[from] alloy::primitives::SignatureError),
     #[error("Not enough signatures on VAA to meet quorum")]
     QuorumNotMet,
+    #[error("Bincode error")]
+    Bincode(#[from] bincode::Error),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

@@ -1,13 +1,15 @@
+use common::{GuestInput, Journal};
 use risc0_zkvm::guest::env;
 
 fn main() {
-    // TODO: Implement your guest code here
+    let input_data = env::read_frame();
+    let input = GuestInput::decode(&input_data).expect("malformed input");
 
-    // read the input
-    let input: u32 = env::read();
+    input
+        .vaa
+        .verify(&input.guardian_set)
+        .expect("Message not valid");
 
-    // TODO: do something with the input
-
-    // write public output to the journal
-    env::commit(&input);
+    let journal = Journal::new(&input.guardian_set.commitment(), &input.vaa.body_hash());
+    env::commit_slice(&journal.encode());
 }
