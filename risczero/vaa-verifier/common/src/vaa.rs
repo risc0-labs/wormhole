@@ -1,22 +1,21 @@
-use std::io::{Cursor, Write};
+use std::io::{Cursor, Read, Write};
 
 use crate::error::{Error, Result};
 use crate::guardian_set::GuardianSet;
 
 use alloy::signers::Signature;
-use byteorder::{BigEndian, WriteBytesExt};
-use serde::{Deserialize, Serialize};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use sha3::Digest;
 
 type ForeignAddress = [u8; 32];
 
-#[derive(Serialize, Deserialize, Default, Clone)]
+#[derive(Default, Clone)]
 pub struct VAASignature {
     pub signature: Vec<u8>,
     pub guardian_index: u8,
 }
 
-#[derive(Serialize, Deserialize, Default, Clone)]
+#[derive(Default, Clone)]
 pub struct VAA {
     // Header part
     pub version: u8,
@@ -33,16 +32,75 @@ pub struct VAA {
 }
 
 impl VAA {
+    pub const HEADER_LEN: usize = 6;
+    pub const SIGNATURE_LEN: usize = 66;
+
+    pub fn deserialize(data: &[u8]) -> std::result::Result<VAA, std::io::Error> {
+        let mut rdr = Cursor::new(data);
+
+        let version = rdr.read_u8()?;
+        let guardian_set_index = rdr.read_u32::<BigEndian>()?;
+
+        let len_sig = rdr.read_u8()?;
+        let mut signatures: Vec<VAASignature> = Vec::with_capacity(len_sig as usize);
+        for _i in 0..len_sig {
+            let guardian_index = rdr.read_u8()?;
+            let mut signature_data = [0u8; 65];
+            rdr.read_exact(&mut signature_data)?;
+            let signature = signature_data.to_vec();
+
+            signatures.push(VAASignature {
+                guardian_index,
+                signature,
+            });
+        }
+
+        let timestamp = rdr.read_u32::<BigEndian>()?;
+        let nonce = rdr.read_u32::<BigEndian>()?;
+        let emitter_chain = rdr.read_u16::<BigEndian>()?;
+
+        let mut emitter_address = [0u8; 32];
+        rdr.read_exact(&mut emitter_address)?;
+
+        let sequence = rdr.read_u64::<BigEndian>()?;
+        let consistency_level = rdr.read_u8()?;
+
+        let mut payload = Vec::new();
+        rdr.read_to_end(&mut payload)?;
+
+        Ok(VAA {
+            version,
+            guardian_set_index,
+            signatures,
+            timestamp,
+            nonce,
+            emitter_chain,
+            emitter_address,
+            sequence,
+            consistency_level,
+            payload,
+        })
+    }
+
     pub fn verify(&self, guardian_set: &GuardianSet) -> Result<()> {
-        // Hash this body and check the signatures
+        // Hash this body
         let body_hash = self.body_hash();
 
+        // hash the result again
+        let signed_hash: [u8; 32] = {
+            let mut h = sha3::Keccak256::default();
+            h.write(body_hash.as_slice()).unwrap();
+            h.finalize().into()
+        };
+
+        // check signatures against double hashed body
         for signature in self.signatures.iter() {
             let recovered_signer = Signature::from_raw(&signature.signature)?
-                .recover_address_from_prehash(&body_hash.into())?;
+                .recover_address_from_prehash(&signed_hash.into())?;
             assert_eq!(
-                recovered_signer,
-                guardian_set.keys[signature.guardian_index as usize]
+                recovered_signer, guardian_set.keys[signature.guardian_index as usize],
+                "Signature {} failed verification",
+                signature.guardian_index
             );
         }
 
