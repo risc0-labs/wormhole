@@ -34,6 +34,7 @@ interface Structs {
 
 		uint32 guardianSetIndex;
 		Signature[] signatures;
+		bytes seal;
 
 		bytes32 hash;
 	}

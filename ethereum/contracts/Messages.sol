@@ -8,15 +8,21 @@ import "./Getters.sol";
 import "./Structs.sol";
 import "./libraries/external/BytesLib.sol";
 
+import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
+import {ImageID} from "./ImageID.sol"; // auto-generated contract after running `cargo build`.
+
 
 contract Messages is Getters {
     using BytesLib for bytes;
+
+    IRiscZeroVerifier public verifier;
+    bytes32 public constant imageId = ImageID.METHOD_ID;
 
     /// @dev parseAndVerifyVM serves to parse an encodedVM and wholy validate it for consumption
     function parseAndVerifyVM(bytes calldata encodedVM) public view returns (Structs.VM memory vm, bool valid, string memory reason) {
         vm = parseVM(encodedVM);
         /// setting checkHash to false as we can trust the hash field in this case given that parseVM computes and then sets the hash field above
-        (valid, reason) = verifyVMInternal_v1(vm, false);
+        (valid, reason) = verifyVMInternal(vm, false);
     }
 
    /**
@@ -28,7 +34,20 @@ contract Messages is Getters {
     *  - it aims to verify the hash field provided against the contents of the vm
     */
     function verifyVM(Structs.VM memory vm) public view returns (bool valid, string memory reason) {
-        (valid, reason) = verifyVMInternal_v1(vm, true);    
+        (valid, reason) = verifyVMInternal(vm, true);    
+    }
+
+    /**
+    * @dev `verifyVMInternal` dispatches to the correct verification strategy depending on the VM version
+    */
+    function verifyVMInternal(Structs.VM memory vm, bool checkHash) internal view returns (bool valid, string memory reason) {
+        if(vm.version == 1){
+            return verifyVMInternal_v1(vm, checkHash);
+        } else if(vm.version == 2){
+            return verifyVMInternal_v2(vm, checkHash);
+        } else {
+            return (false, "VM version incompatible");
+        }
     }
 
     /**
@@ -101,6 +120,42 @@ contract Messages is Getters {
         return (true, "");
     }
 
+    /**
+    * @dev `verifyVMInternal_v2` verifies the cryptographic `seal` of a VM using the Risc Zero verifier
+    *       The ImageId commits to a program which verifies the signatures and ensures the quorum is met (similar to verifyVMInternal_v1)
+    */
+    function verifyVMInternal_v2(Structs.VM memory vm, bool checkHash) internal view returns (bool valid, string memory reason) {
+        bytes32 guardianSetHash = getGuardianSetCommitment(vm.guardianSetIndex);
+        
+        /**
+         * Verify that the hash field in the vm matches with the hash of the contents of the vm if checkHash is set
+         * WARNING: This hash check is critical to ensure that the vm.hash provided matches with the hash of the body.
+         * Without this check, it would not be safe to call verifyVM on it's own as vm.hash can be a valid signed hash
+         * but the body of the vm could be completely different from what was actually signed by the guardians
+         */
+        if(checkHash){
+            bytes memory body = abi.encodePacked(
+                vm.timestamp,
+                vm.nonce,
+                vm.emitterChainId,
+                vm.emitterAddress,
+                vm.sequence,
+                vm.consistencyLevel,
+                vm.payload
+            );
+
+            bytes32 vmHash = keccak256(abi.encodePacked(keccak256(body)));
+
+            if(vmHash != vm.hash){
+                return (false, "vm.hash doesn't match body");
+            }
+        }
+
+        bytes memory journal = abi.encode(guardianSetHash, vm.hash);
+        verifier.verify(vm.seal, imageId, sha256(journal));
+
+        return (true, "");
+    }
 
     /**
      * @dev verifySignatures serves to validate arbitrary sigatures against an arbitrary guardianSet
@@ -154,26 +209,36 @@ contract Messages is Getters {
         // This means that this field's integrity is not protected and cannot be trusted. 
         // This is not a problem today since there is only one accepted version, but it 
         // could be a problem if we wanted to allow other versions in the future. 
-        require(vm.version == 1, "VM version incompatible"); 
 
         vm.guardianSetIndex = encodedVM.toUint32(index);
         index += 4;
 
-        // Parse Signatures
-        uint256 signersLen = encodedVM.toUint8(index);
-        index += 1;
-        vm.signatures = new Structs.Signature[](signersLen);
-        for (uint i = 0; i < signersLen; i++) {
-            vm.signatures[i].guardianIndex = encodedVM.toUint8(index);
+        if(vm.version == 1) {
+            // Parse Signatures
+            uint256 signersLen = encodedVM.toUint8(index);
             index += 1;
+            vm.signatures = new Structs.Signature[](signersLen);
+            for (uint i = 0; i < signersLen; i++) {
+                vm.signatures[i].guardianIndex = encodedVM.toUint8(index);
+                index += 1;
 
-            vm.signatures[i].r = encodedVM.toBytes32(index);
-            index += 32;
-            vm.signatures[i].s = encodedVM.toBytes32(index);
-            index += 32;
-            vm.signatures[i].v = encodedVM.toUint8(index) + 27;
+                vm.signatures[i].r = encodedVM.toBytes32(index);
+                index += 32;
+                vm.signatures[i].s = encodedVM.toBytes32(index);
+                index += 32;
+                vm.signatures[i].v = encodedVM.toUint8(index) + 27;
+                index += 1;
+            }
+        } else if (vm.version == 2) {
+            // parse seal
+            uint sealLen = encodedVM.toUint8(index);
             index += 1;
+            vm.seal = encodedVM.slice(index, sealLen);
+            index += sealLen;
+        } else {
+            revert("VM version incompatible");
         }
+
 
         /*
         Hash the body

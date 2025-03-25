@@ -71,7 +71,7 @@ test-identifiers: dependencies
 
 .PHONY:
 test-forge: dependencies
-	forge test --no-match-test .*_KEVM # ignore KEVM tests (see PROOFS.md)
+	forge test --no-match-test .*_KEVM -vvvv # ignore KEVM tests (see PROOFS.md)
 
 # Verify that the contracts do not include PUSH0 opcodes
 test-push0: dependencies
