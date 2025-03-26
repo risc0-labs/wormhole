@@ -1,24 +1,32 @@
 // test/Messages.sol
 // SPDX-License-Identifier: Apache 2
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8;
 
 import "../contracts/Messages.sol";
 import "../contracts/Setters.sol";
 import "../contracts/Structs.sol";
 import "forge-std/Test.sol";
 
+import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
+import {RiscZeroCheats} from "risc0/test/RiscZeroCheats.sol";
+
 contract ExportedMessages is Messages, Setters {
     function storeGuardianSetPub(Structs.GuardianSet memory set, uint32 index) public {
         return super.storeGuardianSet(set, index);
     }
+
+    function storeRiscZeroVerifier(IRiscZeroVerifier verifier) public {
+        return super.setRiscZeroVerifier(verifier);
+    }
 }
 
-contract TestMessages is Test {
+contract TestMessages is Test, RiscZeroCheats {
   address constant testGuardianPub = 0xbeFA429d57cD18b7F8A4d91A2da9AB4AF05d0FBe;
 
   // A valid VM with one signature from the testGuardianPublic key
   bytes validVM = hex"01000000000100867b55fec41778414f0683e80a430b766b78801b7070f9198ded5e62f48ac7a44b379a6cf9920e42dbd06c5ebf5ec07a934a00a572aefc201e9f91c33ba766d900000003e800000001000b0000000000000000000000000000000000000000000000000000000000000eee00000000000005390faaaa";
+  bytes validVMRiscZero = hex"020000000004c101b42b2dd34962f3d2e05f053e584d6fed583b2ba3df3dc7246f665f0a55e880990d430028abddc06f33e71eb286c7d24c2d59ac0fa3682edaf7bfd2b6b92d336735f100ca6b8d842a10e9bb76a52f423dde9841d32d9b71f2a59232c5c6cd109696e90bd877098e00c5012da8f8f88265de5b9cf6112383ef92268360429a6d6a05fc1904273f8f06b563cb89b08db56e9658be377ac96557250a4800d27cd30295cb0161cd5d497bb26dbb36ec3b22afdb2504d8e8dbcf466df81153b5067581e44b048529d89787978c35fae1f9a08327dde854888599d44afd9c0390a4e16b816909dc915a29fc97c7c277ededa2a620fcd2b5e36d79508fbb45ab66c2aa442cc5000003e800000001000b0000000000000000000000000000000000000000000000000000000000000eee00000000000005390faaaa";
 
   uint256 constant testGuardian = 93941733246223705020089879371323733820373732307041878556247502674739205313440;
 
@@ -28,6 +36,10 @@ contract TestMessages is Test {
 
   function setUp() public {
     messages = new ExportedMessages();
+
+    // initialize risc0 verifier
+    IRiscZeroVerifier verifier = deployRiscZeroVerifier();
+    messages.storeRiscZeroVerifier(verifier);
 
     // initialize guardian set with one guardian
     address[] memory keys = new address[](1);
@@ -160,5 +172,26 @@ contract TestMessages is Test {
     (valid, reason) = messages.verifyVM(invalidVm);
     assertEq(valid, false);
     assertEq(reason, "vm.hash doesn't match body");
+  }
+
+    // This test checks the possibility of getting a unsigned message verified through verifyVM
+  function testRisc0AuthorizedVM() public {
+    // Set the initial guardian set
+    address[] memory initialGuardians = new address[](1);
+    initialGuardians[0] = testGuardianPub;
+
+    // Create a guardian set
+    Structs.GuardianSet memory initialGuardianSet = Structs.GuardianSet({
+      keys: initialGuardians,
+      expirationTime: 0
+    });
+
+    messages.storeGuardianSetPub(initialGuardianSet, uint32(0));
+
+    // Confirm that the test VM is valid
+    (Structs.VM memory parsedValidVm, bool valid, string memory reason) = messages.parseAndVerifyVM(validVMRiscZero);
+    require(valid, reason);
+    assertEq(valid, true);
+    assertEq(reason, "");
   }
 }

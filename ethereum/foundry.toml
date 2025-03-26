@@ -13,6 +13,7 @@ out = 'build-forge'
 libs = ['lib', 'node_modules']
 remappings = [
     '@openzeppelin/=node_modules/@openzeppelin/',
+    'openzeppelin/=node_modules/@openzeppelin/', # to support some of the risc0-ethereum contracts
     '@solidity-parser/=node_modules/@solidity-parser/',
     'risc0/=lib/risc0-ethereum/contracts/src/',
     'ds-test/=lib/forge-std/lib/ds-test/src/',
