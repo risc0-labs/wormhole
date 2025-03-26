@@ -4,10 +4,12 @@ A ZKVM guest program for proving the signature verification of a Wormhole VAA
 
 ## Overview
 
-This fork is a demonstration of the simplest way to integrate Risc0 into the existing Wormhole protocol. Alone this gives no benefits but unlock the possibilities of:
+This fork is a demonstration of the simplest way to integrate Risc0 into the existing Wormhole protocol. Alone this gives no benefits and a minor increase in gas costs (~50k gas) per message but unlock the possibilities of:
 
 - Massively reducing the gas costs for relayers by allowing them to compose and verify multiple VAAs in a single proof or even to allow VAA proofs to be composed with other proofs from other protocols
-- Use different proofs for authorization (e.g. a proof of origin chain finality + transaction inclusion) giving a straightforward path to trust-minimized bridging
+- Use different proofs methods for authorization (e.g. a proof of origin chain finality + transaction inclusion) while using the same on-chain verification logic. This gives a simple path forward to for upgrading to trust-minimized bridging
+
+Currently verification of RISC Zero proofs is supported on EVM and Solana. This demo only shows EVM integration.
 
 ## How it works
 
@@ -45,3 +47,20 @@ This example converts a v1 VAA with a single signature from the Solidity tests i
 ### Contracts
 
 This fork aimed for minimal changes to the on-chain contracts. The main change can be seen in [Messages.sol](../../ethereum/contracts/Messages.sol) which checks for the version of the VM/VAA and uses the correct verification logic in each case. There is also some changes to the [contract state](../../ethereum/contracts/State.sol) which needs to store the hash of the guardian set as well as store the contract address of the RISC Zero verifier. See the full diff for other changes.
+
+
+## Gas Requirements
+
+Gas benchmarking was added for the `parseAndVerifyVM` method in the tests. Results are as follows:
+
+- V1 (13 signers (minimum mainnet quorum)): 146,025
+- V1 (19 signers (full mainnet quorum)): 200,549
+- V2 : 266,175
+
+This does not account for the additional calldata costs required to submit the signatures/seal. This can be calculated as 16 gas per byte:
+
+- V1 (13 signers (minimum mainnet quorum)): 14,672
+- V1 (19 signers (full mainnet quorum)): 21,008
+- V2 : 5,152 (r0)
+
+These values combined give a reasonable estimate of the relative costs for submitting a cross-chain message using each method.
