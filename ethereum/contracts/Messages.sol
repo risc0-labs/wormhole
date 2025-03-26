@@ -15,7 +15,6 @@ import {ImageID} from "./ImageID.sol"; // auto-generated contract after running 
 contract Messages is Getters {
     using BytesLib for bytes;
 
-    IRiscZeroVerifier public verifier;
     bytes32 public constant imageId = ImageID.METHOD_ID;
 
     /// @dev parseAndVerifyVM serves to parse an encodedVM and wholy validate it for consumption
@@ -152,7 +151,7 @@ contract Messages is Getters {
         }
 
         bytes memory journal = abi.encode(guardianSetHash, vm.hash);
-        verifier.verify(vm.seal, imageId, sha256(journal));
+        riscZeroVerifier().verify(vm.seal, imageId, sha256(journal));
 
         return (true, "");
     }

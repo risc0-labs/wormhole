@@ -4,6 +4,7 @@
 pragma solidity ^0.8.0;
 
 import "./State.sol";
+import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
 
 contract Setters is State {
     function updateGuardianSetIndex(uint32 newIndex) internal {
@@ -19,7 +20,7 @@ contract Setters is State {
         for (uint i = 0; i < setLength; i++) {
             require(set.keys[i] != address(0), "Invalid key");
         }
-        bytes32 commitment = keccak256(abi.encode(set.keys));
+        bytes32 commitment = keccak256(abi.encodePacked(set.keys));
         _state.guardianSetCommitments[index] = commitment;
         _state.guardianSets[index] = set;
     }
@@ -55,5 +56,9 @@ contract Setters is State {
     function setEvmChainId(uint256 evmChainId) internal {
         require(evmChainId == block.chainid, "invalid evmChainId");
         _state.evmChainId = evmChainId;
+    }
+
+    function setRiscZeroVerifier(IRiscZeroVerifier verifier) internal {
+        _state.verifier = verifier;
     }
 }

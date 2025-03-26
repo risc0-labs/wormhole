@@ -4,6 +4,7 @@
 pragma solidity ^0.8.0;
 
 import "./State.sol";
+import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
 
 contract Getters is State {
     function getGuardianSet(uint32 index) public view returns (Structs.GuardianSet memory) {
@@ -56,5 +57,9 @@ contract Getters is State {
 
     function nextSequence(address emitter) public view returns (uint64) {
         return _state.sequences[emitter];
+    }
+
+    function riscZeroVerifier() public view returns (IRiscZeroVerifier) {
+        return _state.verifier;
     }
 }

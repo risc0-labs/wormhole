@@ -4,6 +4,7 @@
 pragma solidity ^0.8.0;
 
 import "./Structs.sol";
+import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
 
 contract Events {
     event LogGuardianSetChanged(
@@ -47,6 +48,9 @@ contract Storage {
 
         // Mapping of guardian_set_index => keccak(guardian set)
         mapping(uint32 => bytes32) guardianSetCommitments;
+
+        // RISCzero verifier contract address
+        IRiscZeroVerifier verifier;
     }
 }
 
