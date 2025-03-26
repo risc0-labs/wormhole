@@ -5,3 +5,4 @@ flattened
 ethers-contracts
 build-forge/
 broadcast/
+contracts/Elf.sol
