@@ -6,8 +6,8 @@ A ZKVM guest program for proving the signature verification of a Wormhole VAA
 
 This fork is a demonstration of the simplest way to integrate Risc0 into the existing Wormhole protocol. Alone this gives no benefits and a minor increase in gas costs (~50k gas) per message but unlock the possibilities of:
 
-- Massively reducing the gas costs for relayers by allowing them to compose and verify multiple VAAs in a single proof or even to allow VAA proofs to be composed with other proofs from other protocols
-- Use different proofs methods for authorization (e.g. a proof of origin chain finality + transaction inclusion) while using the same on-chain verification logic. This gives a simple path forward to for upgrading to trust-minimized bridging
+- Massively reducing the gas costs for relayers by allowing them to compose and verify multiple VAAs in a single proof or even to allow VAA proofs to be composed with other proofs from other protocols. Regardless of how many messages are aggregated the verification costs is constant.
+- Use different proofs methods for authorization (e.g. a proof of origin chain light-client finality + transaction inclusion) while using the same on-chain verification logic. This gives a path forward to for upgrading to trust-minimized bridging with minimal changes to the existing protocol while maintaining backward compatibility
 
 Currently verification of RISC Zero proofs is supported on EVM and Solana. This demo only shows EVM integration.
 
