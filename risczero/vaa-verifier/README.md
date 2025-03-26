@@ -46,7 +46,7 @@ This example converts a v1 VAA with a single signature from the Solidity tests i
 
 ### Contracts
 
-This fork aimed for minimal changes to the on-chain contracts. The main change can be seen in [Messages.sol](../../ethereum/contracts/Messages.sol) which checks for the version of the VM/VAA and uses the correct verification logic in each case. There is also some changes to the [contract state](../../ethereum/contracts/State.sol) which needs to store the hash of the guardian set as well as store the contract address of the RISC Zero verifier. See the full diff for other changes.
+This fork aimed for minimal changes to the on-chain contracts. The main change can be seen in [Messages.sol](../../ethereum/contracts/Messages.sol) which checks for the version of the VM/VAA and uses the correct verification logic in each case. There is also some changes to the [contract state](../../ethereum/contracts/State.sol) which needs to store the hash of the guardian set as well as store the contract address of the RISC Zero verifier. [See the full diff for other changes](https://github.com/wormhole-foundation/wormhole/compare/main...risc0-labs:wormhole:willem/zkvm-vaa).
 
 
 ## Gas Requirements
