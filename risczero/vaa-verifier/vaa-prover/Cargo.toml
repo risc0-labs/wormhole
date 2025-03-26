@@ -8,8 +8,8 @@ methods = { path = "../methods" }
 common = { path = "../common" }
 
 alloy-primitives = "0.8.24"
-risc0-zkvm = { version = "1.2.5", features = ["unstable"] }
+risc0-zkvm = { version = "2.0.0", features = ["unstable"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde = "1.0"
-risc0-ethereum-contracts = { git = "https://github.com/risc0/risc0-ethereum", rev = "v1.2.0" }
+risc0-ethereum-contracts = { git = "https://github.com/risc0/risc0-ethereum", rev = "v2.0.0-rc.3" }
 hex = "0.4.3"
