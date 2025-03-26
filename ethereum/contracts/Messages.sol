@@ -124,6 +124,10 @@ contract Messages is Getters {
     *       The ImageId commits to a program which verifies the signatures and ensures the quorum is met (similar to verifyVMInternal_v1)
     */
     function verifyVMInternal_v2(Structs.VM memory vm, bool checkHash) internal view returns (bool valid, string memory reason) {
+        if (riscZeroVerifier() == IRiscZeroVerifier(address(0))){
+            return (false, "Risc Zero Verifier contract address not set");
+        }
+
         bytes32 guardianSetHash = getGuardianSetCommitment(vm.guardianSetIndex);
         
         /**
@@ -230,8 +234,8 @@ contract Messages is Getters {
             }
         } else if (vm.version == 2) {
             // parse seal
-            uint sealLen = encodedVM.toUint8(index);
-            index += 1;
+            uint32 sealLen = encodedVM.toUint32(index);
+            index += 4;
             vm.seal = encodedVM.slice(index, sealLen);
             index += sealLen;
         } else {

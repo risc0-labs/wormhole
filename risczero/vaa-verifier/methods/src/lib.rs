@@ -2,12 +2,10 @@ include!(concat!(env!("OUT_DIR"), "/methods.rs"));
 
 #[cfg(test)]
 pub mod tests {
-    use super::*;
     use alloy_primitives::{address, Address};
-    use common::{GuardianSet, GuestInput, VAA};
+    use common::{GuardianSet, GuestInput};
     use hex_literal::hex;
-    use risc0_ethereum_contracts::encode_seal;
-    use risc0_zkvm::{default_executor, default_prover, ExecutorEnv, ProverOpts, VerifierContext};
+    use risc0_zkvm::{default_executor, ExecutorEnv};
 
     const TEST_GUARDIAN_PUB: Address = address!("0xbeFA429d57cD18b7F8A4d91A2da9AB4AF05d0FBe");
 
@@ -22,6 +20,14 @@ pub mod tests {
             creation_time: 0,
             expiration_time: 0,
         };
+
+        println!(
+            "guardian_set commitment: {:?}",
+            hex::encode(guardian_set.commitment())
+        );
+
+        let vaa = common::VAA::deserialize(VALID_VM).expect("Failed to decode VAA");
+        println!("vaa body hash: {:?}", hex::encode(vaa.body_hash()));
 
         let input = GuestInput {
             vaa_bytes: VALID_VM.to_vec(),

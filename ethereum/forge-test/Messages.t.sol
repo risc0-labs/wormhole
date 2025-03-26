@@ -26,7 +26,7 @@ contract TestMessages is Test, RiscZeroCheats {
 
   // A valid VM with one signature from the testGuardianPublic key
   bytes validVM = hex"01000000000100867b55fec41778414f0683e80a430b766b78801b7070f9198ded5e62f48ac7a44b379a6cf9920e42dbd06c5ebf5ec07a934a00a572aefc201e9f91c33ba766d900000003e800000001000b0000000000000000000000000000000000000000000000000000000000000eee00000000000005390faaaa";
-  bytes validVMRiscZero = hex"020000000004c101b42b2dd34962f3d2e05f053e584d6fed583b2ba3df3dc7246f665f0a55e880990d430028abddc06f33e71eb286c7d24c2d59ac0fa3682edaf7bfd2b6b92d336735f100ca6b8d842a10e9bb76a52f423dde9841d32d9b71f2a59232c5c6cd109696e90bd877098e00c5012da8f8f88265de5b9cf6112383ef92268360429a6d6a05fc1904273f8f06b563cb89b08db56e9658be377ac96557250a4800d27cd30295cb0161cd5d497bb26dbb36ec3b22afdb2504d8e8dbcf466df81153b5067581e44b048529d89787978c35fae1f9a08327dde854888599d44afd9c0390a4e16b816909dc915a29fc97c7c277ededa2a620fcd2b5e36d79508fbb45ab66c2aa442cc5000003e800000001000b0000000000000000000000000000000000000000000000000000000000000eee00000000000005390faaaa";
+  bytes validVMRiscZero = hex"0200000000000001049f39696c17a059e6ccabf91e11566d13ec4148e16b909150f882d9b702d1db43a2421f431550103dd49341b49f7c061b1c27007bfb050257cea7db72686b70023d184354269165e522216d6ea73f278983b4ca9449c4fa4d6f9ccbdb761d44d38757a8402848013cee1f65f2f3b08c53bf0f591b75adb3fbfe8ea478c8efbda7c8e2b8bf07a2387b364a67c13614e2b418edaf8e41e6be408be2079195cd32cbd3c35c6b0137e662fc762dbf536895d754c5161f80896d2eb7e125fd4084a6623e32ea9a2b31005cd6fdc34546d743657508cf39552e5e107014122b1f880d8ff1f658fc064a8c0279c7008dbb47dcd86dd660427960e15c5cea6e15b4798f64721d8628000003e800000001000b0000000000000000000000000000000000000000000000000000000000000eee00000000000005390faaaa";
 
   uint256 constant testGuardian = 93941733246223705020089879371323733820373732307041878556247502674739205313440;
 
@@ -189,9 +189,30 @@ contract TestMessages is Test, RiscZeroCheats {
     messages.storeGuardianSetPub(initialGuardianSet, uint32(0));
 
     // Confirm that the test VM is valid
-    (Structs.VM memory parsedValidVm, bool valid, string memory reason) = messages.parseAndVerifyVM(validVMRiscZero);
+    (, bool valid, string memory reason) = messages.parseAndVerifyVM(validVMRiscZero);
     require(valid, reason);
     assertEq(valid, true);
     assertEq(reason, "");
+  }
+
+  function testBodySameBetweenV1V2() public {
+    Structs.VM memory v1 = messages.parseVM(validVM);
+    Structs.VM memory v2 = messages.parseVM(validVMRiscZero);
+
+    assertEq(v1.version, 1);
+    assertEq(v2.version, 2);
+
+    // Check equivalence of matching fields between v1 and v2
+    assertEq(v1.guardianSetIndex, v2.guardianSetIndex);
+    assertEq(v1.timestamp, v2.timestamp);
+    assertEq(v1.nonce, v2.nonce);
+    assertEq(v1.emitterChainId, v2.emitterChainId);
+    assertEq(v1.emitterAddress, v2.emitterAddress);
+    assertEq(v1.sequence, v2.sequence);
+    assertEq(v1.consistencyLevel, v2.consistencyLevel);
+    assertEq(v1.payload, v2.payload);
+
+
+    assertEq(v1.hash, v2.hash);
   }
 }

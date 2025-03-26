@@ -60,7 +60,7 @@ impl VAA {
                 (signatures, Vec::new())
             }
             2 => {
-                let len_seal = rdr.read_u8()?;
+                let len_seal = rdr.read_u32::<BigEndian>()?;
                 let mut seal = vec![0u8; len_seal as usize];
                 rdr.read_exact(seal.as_mut_slice())?;
                 (Vec::new(), seal)
@@ -116,7 +116,7 @@ impl VAA {
                 }
             }
             2 => {
-                v.write_u8(self.seal.len() as u8).unwrap();
+                v.write_u32::<BigEndian>(self.seal.len() as u32).unwrap();
                 v.write_all(&self.seal).unwrap();
             }
             _ => panic!("Invalid version"),
@@ -137,17 +137,10 @@ impl VAA {
         // Hash this body
         let body_hash = self.body_hash();
 
-        // hash the result again
-        let signed_hash: [u8; 32] = {
-            let mut h = sha3::Keccak256::default();
-            h.write(body_hash.as_slice()).unwrap();
-            h.finalize().into()
-        };
-
         // check signatures against double hashed body
         for signature in self.signatures.iter() {
             let recovered_signer = Signature::from_raw(&signature.signature)?
-                .recover_address_from_prehash(&signed_hash.into())?;
+                .recover_address_from_prehash(&body_hash.into())?;
             assert_eq!(
                 recovered_signer, guardian_set.keys[signature.guardian_index as usize],
                 "Signature {} failed verification",
@@ -192,6 +185,10 @@ impl VAA {
 
         let mut h = sha3::Keccak256::default();
         h.write(body.as_slice()).unwrap();
+        let res = h.finalize_reset();
+
+        // hash again
+        h.write(&res).unwrap();
         h.finalize().into()
     }
 }
@@ -249,7 +246,7 @@ mod tests {
             version: 2,
             guardian_set_index: 0,
             signatures: vec![],
-            seal: vec![0_u8; 99],
+            seal: vec![0_u8; 300],
             timestamp: 1234567890,
             nonce: 1,
             emitter_chain: 2,
