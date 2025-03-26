@@ -21,6 +21,7 @@ pub struct VAA {
     pub version: u8,
     pub guardian_set_index: u32,
     pub signatures: Vec<VAASignature>,
+    pub seal: Vec<u8>,
     // Body part
     pub timestamp: u32,
     pub nonce: u32,
@@ -41,19 +42,36 @@ impl VAA {
         let version = rdr.read_u8()?;
         let guardian_set_index = rdr.read_u32::<BigEndian>()?;
 
-        let len_sig = rdr.read_u8()?;
-        let mut signatures: Vec<VAASignature> = Vec::with_capacity(len_sig as usize);
-        for _i in 0..len_sig {
-            let guardian_index = rdr.read_u8()?;
-            let mut signature_data = [0u8; 65];
-            rdr.read_exact(&mut signature_data)?;
-            let signature = signature_data.to_vec();
+        let (signatures, seal) = match version {
+            1 => {
+                let len_sig = rdr.read_u8()?;
+                let mut signatures: Vec<VAASignature> = Vec::with_capacity(len_sig as usize);
+                for _i in 0..len_sig {
+                    let guardian_index = rdr.read_u8()?;
+                    let mut signature_data = [0u8; 65];
+                    rdr.read_exact(&mut signature_data)?;
+                    let signature = signature_data.to_vec();
 
-            signatures.push(VAASignature {
-                guardian_index,
-                signature,
-            });
-        }
+                    signatures.push(VAASignature {
+                        guardian_index,
+                        signature,
+                    });
+                }
+                (signatures, Vec::new())
+            }
+            2 => {
+                let len_seal = rdr.read_u8()?;
+                let mut seal = vec![0u8; len_seal as usize];
+                rdr.read_exact(seal.as_mut_slice())?;
+                (Vec::new(), seal)
+            }
+            _ => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "Invalid version",
+                ));
+            }
+        };
 
         let timestamp = rdr.read_u32::<BigEndian>()?;
         let nonce = rdr.read_u32::<BigEndian>()?;
@@ -72,6 +90,7 @@ impl VAA {
             version,
             guardian_set_index,
             signatures,
+            seal,
             timestamp,
             nonce,
             emitter_chain,
@@ -80,6 +99,38 @@ impl VAA {
             consistency_level,
             payload,
         })
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut v = Cursor::new(Vec::new());
+
+        v.write_u8(self.version).unwrap();
+        v.write_u32::<BigEndian>(self.guardian_set_index).unwrap();
+
+        match self.version {
+            1 => {
+                v.write_u8(self.signatures.len() as u8).unwrap();
+                for sig in self.signatures.iter() {
+                    v.write_u8(sig.guardian_index).unwrap();
+                    v.write_all(&sig.signature).unwrap();
+                }
+            }
+            2 => {
+                v.write_u8(self.seal.len() as u8).unwrap();
+                v.write_all(&self.seal).unwrap();
+            }
+            _ => panic!("Invalid version"),
+        }
+
+        v.write_u32::<BigEndian>(self.timestamp).unwrap();
+        v.write_u32::<BigEndian>(self.nonce).unwrap();
+        v.write_u16::<BigEndian>(self.emitter_chain).unwrap();
+        v.write_all(&self.emitter_address).unwrap();
+        v.write_u64::<BigEndian>(self.sequence).unwrap();
+        v.write_u8(self.consistency_level).unwrap();
+        v.write_all(&self.payload).unwrap();
+
+        v.into_inner()
     }
 
     pub fn verify(&self, guardian_set: &GuardianSet) -> Result<()> {
@@ -142,5 +193,85 @@ impl VAA {
         let mut h = sha3::Keccak256::default();
         h.write(body.as_slice()).unwrap();
         h.finalize().into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn roundtrip_serialization_v1() {
+        let vaa = VAA {
+            version: 1,
+            guardian_set_index: 0,
+            signatures: vec![VAASignature {
+                signature: vec![0; 65],
+                guardian_index: 0,
+            }],
+            seal: vec![],
+            timestamp: 1234567890,
+            nonce: 1,
+            emitter_chain: 2,
+            emitter_address: [0; 32],
+            sequence: 3,
+            consistency_level: 4,
+            payload: vec![1, 2, 3, 4, 5],
+        };
+
+        let serialized = vaa.serialize();
+        let deserialized = VAA::deserialize(&serialized).unwrap();
+
+        assert_eq!(vaa.version, deserialized.version);
+        assert_eq!(vaa.guardian_set_index, deserialized.guardian_set_index);
+        assert_eq!(vaa.signatures.len(), deserialized.signatures.len());
+        assert_eq!(
+            vaa.signatures[0].guardian_index,
+            deserialized.signatures[0].guardian_index
+        );
+        assert_eq!(
+            vaa.signatures[0].signature,
+            deserialized.signatures[0].signature
+        );
+        assert_eq!(vaa.seal.len(), 0);
+        assert_eq!(vaa.timestamp, deserialized.timestamp);
+        assert_eq!(vaa.nonce, deserialized.nonce);
+        assert_eq!(vaa.emitter_chain, deserialized.emitter_chain);
+        assert_eq!(vaa.emitter_address, deserialized.emitter_address);
+        assert_eq!(vaa.sequence, deserialized.sequence);
+        assert_eq!(vaa.consistency_level, deserialized.consistency_level);
+        assert_eq!(vaa.payload, deserialized.payload);
+    }
+
+    #[test]
+    pub fn roundtrip_serialization_v2() {
+        let vaa = VAA {
+            version: 2,
+            guardian_set_index: 0,
+            signatures: vec![],
+            seal: vec![0_u8; 99],
+            timestamp: 1234567890,
+            nonce: 1,
+            emitter_chain: 2,
+            emitter_address: [0; 32],
+            sequence: 3,
+            consistency_level: 4,
+            payload: vec![1, 2, 3, 4, 5],
+        };
+
+        let serialized = vaa.serialize();
+        let deserialized = VAA::deserialize(&serialized).unwrap();
+
+        assert_eq!(vaa.version, deserialized.version);
+        assert_eq!(vaa.guardian_set_index, deserialized.guardian_set_index);
+        assert_eq!(vaa.signatures.len(), 0);
+        assert_eq!(vaa.seal.len(), deserialized.seal.len());
+        assert_eq!(vaa.timestamp, deserialized.timestamp);
+        assert_eq!(vaa.nonce, deserialized.nonce);
+        assert_eq!(vaa.emitter_chain, deserialized.emitter_chain);
+        assert_eq!(vaa.emitter_address, deserialized.emitter_address);
+        assert_eq!(vaa.sequence, deserialized.sequence);
+        assert_eq!(vaa.consistency_level, deserialized.consistency_level);
+        assert_eq!(vaa.payload, deserialized.payload);
     }
 }
