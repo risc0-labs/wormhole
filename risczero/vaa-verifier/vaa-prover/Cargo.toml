@@ -1,0 +1,15 @@
+[package]
+name = "vaa-prover"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+methods = { path = "../methods" }
+common = { path = "../common" }
+
+alloy-primitives = "0.8.24"
+risc0-zkvm = { version = "1.2.5", features = ["unstable"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+serde = "1.0"
+risc0-ethereum-contracts = { git = "https://github.com/risc0/risc0-ethereum", rev = "v1.2.0" }
+hex = "0.4.3"
