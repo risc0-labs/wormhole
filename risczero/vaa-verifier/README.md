@@ -66,3 +66,5 @@ This does not account for the additional calldata costs required to submit the s
 - V2 : 5,152 (r0)
 
 These values combined give a reasonable estimate of the relative costs for submitting a cross-chain message using each method.
+
+Note that for chains where execution is cheap but calldata is expensive (e.g. L2s) V2 messages will likely be cheaper overall.
