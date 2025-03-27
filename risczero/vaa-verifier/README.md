@@ -17,6 +17,8 @@ This introduces a new field to VAA - `seal`. It also introduces v2 of VAA messag
 
 This seal is a crytographic proof that the signatures were verified against a particular guardian set off-chain in the ZKVM. So instead of verifying the signatures when verifying the VAA it is sufficient to verify this proof instead. When verifying the seal the contract must also provide a [journal hash](https://dev.risczero.com/terminology#journal) which commits to the guardian set used and the body of the message.
 
+![Architecture Diagram](architecture.excalidraw.svg)
+
 ### Guest Program
 
 In RISC Zero the guest program is the program run inside the ZKVM that a proof is generated for. The main function for the guest program can be found in [this main.rs](./methods/guest/src/main.rs). It just decodes the VAA and guardian set from input, verifies the signatures+quorum, and then commits to the VAA body and guardian set used. Much of this logic is taken directly from the Solana Wormhole contracts.
